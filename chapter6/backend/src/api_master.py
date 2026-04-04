@@ -24,16 +24,16 @@ def setup_api_master(queue):
                     env=os.environ.copy()
                 ))
             )
-            except Exception:
-                _state.client = None
+        except Exception:
+            _state.client = None
 
 def _create_agent():
     """サブエージェントを作成"""
     if not _state.client:
-        retrn None
+        return None
     return Agent(
-        model = "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
-        tools = _state.client.list.tools.sync()
+        model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        tools=_state.client.list_tools_sync()
     )
 
 @tool

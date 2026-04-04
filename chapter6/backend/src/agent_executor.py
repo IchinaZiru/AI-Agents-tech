@@ -9,12 +9,11 @@ async def extract(queue, agent, event, state):
             delta = {"delta": {"text": event}}
             await queue.put(
                 {"event": {"contentBlockDelta": delta}}
-
             )
-    elif isinstance(event: dict) and "event" in event:
+    elif isinstance(event, dict) and "event" in event:
         event_data = event["event"]
-
-        #ツール使用を検知
+        
+        # ツール使用を検出
         if "contentBlockStart" in event_data:
             block = event_data["contentBlockStart"]
             start_data = block.get("start", {})
@@ -25,14 +24,14 @@ async def extract(queue, agent, event, state):
                     queue, f"「{agent}」がツール「{tool}」を実行中",
                     "tool_use", tool
                 )
-
-        # テキストの増分を処理
+        
+        # テキスト増分を処理
         if "contentBlockDelta" in event_data:
-            block = evet_data["contentBlockDelta"]
+            block = event_data["contentBlockDelta"]
             delta = block.get("delta", {})
             if "text" in delta:
                 state["text"] += delta["text"]
-
+        
         if queue:
             await queue.put(event)
 
@@ -42,12 +41,13 @@ async def invoke(agent, query, mcp, create_agent, queue):
     await send_event(
         queue, f"サブエージェント「{agent}」が呼び出されました", "start"
     )
-
+    
     try:
         # MCPクライアントを起動しながら、エージェントを呼び出し
         with mcp:
             agent_obj = create_agent()
-            async for extract(queue, agent, event, state)
+            async for event in agent_obj.stream_async(query):
+                await extract(queue, agent, event, state)
         await send_event(
             queue, f"「{agent}」が対応を完了しました", "complete"
         )
@@ -55,4 +55,3 @@ async def invoke(agent, query, mcp, create_agent, queue):
     
     except Exception:
         return f"{agent}エージェントの処理に失敗しました"
-

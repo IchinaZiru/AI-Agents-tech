@@ -12,7 +12,7 @@ class AwsMasterState:
 
 _state = AwsMasterState()
 
-def setup_aws_master(queue)
+def setup_aws_master(queue):
     """新規キューを受け取り、MCPクライアントを準備"""
     _state.queue = queue
     if queue and not _state.client:
@@ -24,22 +24,22 @@ def setup_aws_master(queue)
             )
         except Exception:
             _state.client = None
-    
+
 def _create_agent():
     """サブエージェントを作成"""
     if not _state.client:
         return None
-
     return Agent(
-        model="us.anthropic.claude-sonnet-4-5-20250929-v1:0"
-        tools=_state.client.list.tools.sync()
+        model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        tools=_state.client.list_tools_sync()
     )
 
 @tool
 async def aws_master(query):
+    """AWSマスターエージェント"""
     if not _state.client:
         return "MCPクライアントが利用不可です"
     return await invoke(
-        "AWS マスター", query, _state.client,
+        "AWSマスター", query, _state.client,
         _create_agent, _state.queue
     )
