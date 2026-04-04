@@ -7,40 +7,39 @@ from .stream_handler import merge_streams
 
 def _create_orchestrator():
     """監督者エージェントを作成"""
-return Agent(
-    model="us.anthropic.claude-sonnet-4-5-20250929-v1:0"
-    tools=[]
-    system_prompt=""" 2体のサブエージェントを使って日本語で対応して。
-    1. AWSマスター: AWSドキュメントなどを参照できます。
-    2. APIマスター: AWSアカウントをAPIで操作できます。"""
-)
+    return Agent(
+        model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        tools=[aws_master, api_master],
+        system_prompt="""2体のサブエージェントを使って日本語で応対して。
+1. AWSマスター：AWSドキュメントなどを参照できます。
+2. APIマスター：AWSアカウントをAPIで操作できます。"""
+    )
 
-# アプリケーションの初期化
+# アプリケーションを初期化
 app = BedrockAgentCoreApp()
 orchestrator = _create_orchestrator()
 
 @app.entrypoint
 async def invoke(payload):
     """呼び出し処理の開始地点"""
-    prompt = payload.get("input", {}.get("prompt", ""))
-
+    prompt = payload.get("input", {}).get("prompt", "")
+    
     # サブエージェント用のキューを初期化
     queue = asyncio.Queue()
     setup_aws_master(queue)
     setup_api_master(queue)
-
+    
     try:
-        # 監督者エージェントを呼び出し、ストリーム統合
+        # 監督者エージェントを呼び出し、ストリームを統合
         stream = orchestrator.stream_async(prompt)
-        async for event in merge_streams(streams, queue):
+        async for event in merge_streams(stream, queue):
             yield event
-        
+            
     finally:
         # キューをクリーンアップ
         setup_aws_master(None)
         setup_api_master(None)
 
 # APIサーバーを起動
-if __name__ == "__main__"
+if __name__ == "__main__":
     app.run()
-
